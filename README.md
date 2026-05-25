@@ -82,16 +82,37 @@ ffplay -f v4l2 -input_format mjpeg -video_size 1280x720 -framerate 30 /dev/video
 
 ## Installation & Start
 
-### Abhängigkeiten installieren
+### Lokal (mit uv)
 
 ```bash
 uv sync
+uv run python main.py
 ```
 
-### Server starten
+### Docker
+
+Requirements-Datei aktualisieren (nach Abhängigkeitsänderungen):
 
 ```bash
-uv run python main.py
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+Image bauen:
+
+```bash
+docker build -t usbview .
+```
+
+Container starten:
+
+```bash
+docker run --name usbview --rm --device=/dev/video0 -p 8080:8080 usbview
+```
+
+Bei mehreren Capture-Devices und als Daemon:
+
+```bash
+docker run --name usbview -d --device=/dev/video0 --device=/dev/video1 -p 8080:8080 usbview
 ```
 
 Der Server lauscht auf `http://0.0.0.0:8080`.  
