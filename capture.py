@@ -3,6 +3,7 @@ import subprocess
 import threading
 import time
 import cv2
+import numpy as np
 
 DEFAULT_DEVICE = "/dev/video0"
 DEFAULT_WIDTH = 1280
@@ -62,6 +63,19 @@ def parse_v4l2_formats(device: str) -> list[dict]:
     return results
 
 
+def _make_no_signal_frame(width: int, height: int) -> bytes:
+    img = np.full((height, width, 3), 12, dtype=np.uint8)
+    text = "KEIN SIGNAL"
+    font = cv2.FONT_HERSHEY_DUPLEX
+    scale = max(1.5, width / 320)
+    thickness = max(2, round(scale))
+    color = (0, 159, 245)  # BGR: amber
+    (tw, th), _ = cv2.getTextSize(text, font, scale, thickness)
+    cv2.putText(img, text, ((width - tw) // 2, (height + th) // 2), font, scale, color, thickness, cv2.LINE_AA)
+    _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    return buf.tobytes()
+
+
 def _device_index(device: str) -> int:
     m = re.search(r"\d+$", device)
     return int(m.group()) if m else 0
@@ -83,6 +97,7 @@ class FrameBroadcaster:
         self._frame_lock = threading.Lock()
         self._config_lock = threading.Lock()
         self._frame: bytes | None = None
+        self._has_signal: bool = False
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._settings: tuple[str, int, int, int] | None = None
@@ -99,6 +114,7 @@ class FrameBroadcaster:
             self._stop = threading.Event()
             with self._frame_lock:
                 self._frame = None
+                self._has_signal = False
             self._thread = threading.Thread(
                 target=self._loop,
                 args=(device, width, height, fps, self._stop),
@@ -109,21 +125,30 @@ class FrameBroadcaster:
     def _loop(
         self, device: str, width: int, height: int, fps: int, stop: threading.Event
     ) -> None:
-        cap = _open_capture(device, width, height, fps)
-        try:
-            while not stop.is_set():
-                ok, frame = cap.read()
-                if not ok:
-                    break
-                _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                with self._frame_lock:
-                    self._frame = buf.tobytes()
-        finally:
-            cap.release()
+        while not stop.is_set():
+            cap = _open_capture(device, width, height, fps)
+            try:
+                while not stop.is_set():
+                    ok, frame = cap.read()
+                    if not ok:
+                        with self._frame_lock:
+                            self._has_signal = False
+                        break
+                    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    with self._frame_lock:
+                        self._frame = buf.tobytes()
+                        self._has_signal = True
+            finally:
+                cap.release()
+            stop.wait(1.0)
 
     def latest(self) -> bytes | None:
         with self._frame_lock:
             return self._frame
+
+    def has_signal(self) -> bool:
+        with self._frame_lock:
+            return self._has_signal
 
 
 broadcaster = FrameBroadcaster()
@@ -131,10 +156,17 @@ broadcaster = FrameBroadcaster()
 
 def mjpeg_frames(device: str, width: int, height: int, fps: int):
     broadcaster.configure(device, width, height, fps)
+    no_signal = _make_no_signal_frame(width, height)
     last: bytes | None = None
     while True:
         frame = broadcaster.latest()
-        if frame is not None and frame is not last:
+        if frame is None:
+            time.sleep(0.2)
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + no_signal + b"\r\n"
+            )
+        elif frame is not last:
             last = frame
             yield (
                 b"--frame\r\n"
