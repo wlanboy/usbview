@@ -11,6 +11,7 @@ from capture import (
     list_video_devices,
     parse_v4l2_formats,
     mjpeg_frames,
+    broadcaster,
 )
 
 app = FastAPI()
@@ -30,6 +31,11 @@ async def devices():
 @app.get("/formats")
 async def formats(device: str = Query(default=DEFAULT_DEVICE)):
     return parse_v4l2_formats(device)
+
+
+@app.get("/status")
+async def status():
+    return {"signal": broadcaster.has_signal()}
 
 
 @app.get("/stream")
