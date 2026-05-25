@@ -1,0 +1,18 @@
+[project]
+name = "usbview"
+version = "0.1.0"
+description = "USB HDMI Capture Card viewer"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.136",
+    "uvicorn[standard]>=0.48",
+    "opencv-python-headless>=4.13",
+    "starlette>=1.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.409",
+    "ruff>=0.15.14",
+]
