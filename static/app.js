@@ -7,12 +7,26 @@ const fpsSelect  = document.getElementById("fps-select");
 const fsBtn      = document.getElementById("fs-btn");
 const streamImg  = document.getElementById("stream");
 const viewer     = document.getElementById("viewer");
+const overlay    = document.getElementById("overlay");
 const dot        = document.getElementById("dot");
 const statusDev  = document.getElementById("status-dev");
 const statusRes  = document.getElementById("status-res");
 
-streamImg.onload  = () => { viewer.classList.remove("loading"); dot.classList.add("live"); };
-streamImg.onerror = () => { viewer.classList.add("loading");    dot.classList.remove("live"); };
+streamImg.onload  = () => { viewer.classList.remove("loading"); };
+streamImg.onerror = () => { viewer.classList.add("loading"); dot.classList.remove("live"); };
+
+let _statusTimer = null;
+
+function startStatusPolling() {
+  if (_statusTimer) return;
+  _statusTimer = setInterval(async () => {
+    if (!streamImg.src) return;
+    try {
+      const s = await fetch("/status").then(r => r.json());
+      dot.classList.toggle("live", s.signal);
+    } catch (_) {}
+  }, 2000);
+}
 
 async function loadFormats() {
   const device = devices[devSelect.value]?.path;
@@ -50,13 +64,22 @@ function applySettings() {
   const device = devices[devSelect.value]?.path;
   const fmt    = formats[resSelect.value];
   const fps    = fpsSelect.value;
-  if (!device || !fmt) return;
+
+  if (device) statusDev.textContent = device;
+
+  if (!device) return;
+
+  const width  = fmt?.width  ?? 1280;
+  const height = fmt?.height ?? 720;
+  const fpsVal = fmt ? fps : 30;
 
   viewer.classList.add("loading");
+  viewer.classList.remove("no-signal");
   dot.classList.remove("live");
-  streamImg.src = `/stream?device=${encodeURIComponent(device)}&width=${fmt.width}&height=${fmt.height}&fps=${fps}&_=${Date.now()}`;
-  statusDev.textContent = device;
-  statusRes.textContent = `${fmt.width}×${fmt.height} — ${fps} fps`;
+  overlay.textContent = "Verbinde mit Capture Card…";
+  streamImg.src = `/stream?device=${encodeURIComponent(device)}&width=${width}&height=${height}&fps=${fpsVal}&_=${Date.now()}`;
+  statusRes.textContent = fmt ? `${width}×${height} — ${fpsVal} fps` : "—";
+  startStatusPolling();
 }
 
 devSelect.addEventListener("change", () => loadFormats().then(applySettings));
