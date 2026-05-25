@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>USB Capture Viewer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="controls">
+    <label for="dev-select">Device</label>
+    <select id="dev-select"></select>
+
+    <div class="separator"></div>
+
+    <label for="res-select">Auflösung</label>
+    <select id="res-select"></select>
+
+    <label for="fps-select">FPS</label>
+    <select id="fps-select"></select>
+
+    <button id="fs-btn" title="Vollbild (F)">⛶</button>
+  </div>
+
+  <div id="viewer" class="loading">
+    <img id="stream" src="" alt="Video Stream">
+    <div id="overlay">Verbinde mit Capture Card&hellip;</div>
+  </div>
+
+  <div id="statusbar">
+    <span><span id="dot"></span> Live</span>
+    <span id="status-dev">—</span>
+    <span id="status-res">—</span>
+  </div>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
