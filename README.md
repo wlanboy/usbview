@@ -1,15 +1,26 @@
-# usbview
+# usbview – Browser‑basierter Live‑Viewer für USB‑HDMI‑Capture‑Cards
 
-Browser-basierter Live-Viewer für USB-HDMI-Capture-Cards unter Linux.  
-Gedacht für den Zugriff auf BIOS/UEFI-Einstellungen von Server-Boards ohne KVM-Switch — einfach Capture Card anstecken, Server starten, Browser öffnen.
+usbview ist ein browserbasierter Live‑Viewer für USB‑HDMI‑Capture‑Cards unter Linux.
+Der Dienst stellt einen HTTP‑Stream bereit, über den das angeschlossene HDMI‑Gerät direkt im Browser betrachtet werden kann — ganz ohne zusätzliche Software.
+
+Das Tool eignet sich besonders für Server‑Hardware ohne KVM‑Switch:
+Capture‑Card einstecken, Server einschalten, Browser öffnen — und schon lassen sich BIOS‑ oder UEFI‑Einstellungen bequem aus der Ferne betrachten.
 
 ## Features
+- MJPEG‑Livestream ohne Neukodierung  
+Direkter Zugriff auf den MJPEG‑Stream der Capture‑Card für minimale Latenz.
 
-- MJPEG-Stream direkt aus der Capture Card, keine Neucodierung
-- Auflösung und FPS per Dropdown wählbar (Werte kommen live von `v4l2-ctl`)
-- Mehrere Capture-Devices auswählbar
-- Vollbild-Modus (Button, Taste `F` oder `Esc`)
-- Einzelner Capture-Thread — mehrere Browser-Tabs teilen denselben Stream
+- Auflösung und FPS dynamisch wählbar  
+Dropdown‑Auswahl basierend auf den Live‑Capabilities von v4l2-ctl.
+
+- Mehrere Capture‑Devices auswählbar  
+Praktisch für Systeme mit mehreren angeschlossenen Karten.
+
+- Vollbild‑Modus  
+Per Button, F‑Taste oder Esc umschaltbar.
+
+- Einzelner Capture‑Thread für alle Clients  
+Mehrere Browser‑Tabs teilen sich denselben Stream — ressourcenschonend und stabil.
 
 ## Voraussetzungen
 
