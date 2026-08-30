@@ -1,17 +1,17 @@
+import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
-import uvicorn
 
-from v4l2 import DEFAULT_DEVICE, list_video_devices, parse_v4l2_formats
 from stream import (
-    DEFAULT_WIDTH,
-    DEFAULT_HEIGHT,
     DEFAULT_FPS,
+    DEFAULT_HEIGHT,
+    DEFAULT_WIDTH,
     CaptureSettings,
-    mjpeg_frames,
     broadcaster,
+    mjpeg_frames,
 )
+from v4l2 import DEFAULT_DEVICE, list_video_devices, parse_v4l2_formats
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")

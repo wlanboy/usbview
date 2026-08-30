@@ -2,6 +2,7 @@ import re
 import threading
 import time
 from typing import NamedTuple
+
 import cv2
 import numpy as np
 

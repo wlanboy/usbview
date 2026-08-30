@@ -10,7 +10,7 @@ def list_video_devices() -> list[dict]:
             ["v4l2-ctl", "--list-devices"],
             stderr=subprocess.DEVNULL, text=True,
         )
-    except Exception:
+    except (subprocess.CalledProcessError, OSError):
         return [{"path": DEFAULT_DEVICE, "name": DEFAULT_DEVICE}]
 
     devices: list[dict] = []
@@ -31,7 +31,7 @@ def parse_v4l2_formats(device: str) -> list[dict]:
             ["v4l2-ctl", f"--device={device}", "--list-formats-ext"],
             stderr=subprocess.DEVNULL, text=True,
         )
-    except Exception:
+    except (subprocess.CalledProcessError, OSError):
         return []
 
     results: list[dict] = []
