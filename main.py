@@ -3,14 +3,12 @@ from fastapi.responses import FileResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
 import uvicorn
 
-from capture import (
-    DEFAULT_DEVICE,
+from v4l2 import DEFAULT_DEVICE, list_video_devices, parse_v4l2_formats
+from stream import (
     DEFAULT_WIDTH,
     DEFAULT_HEIGHT,
     DEFAULT_FPS,
     CaptureSettings,
-    list_video_devices,
-    parse_v4l2_formats,
     mjpeg_frames,
     broadcaster,
 )

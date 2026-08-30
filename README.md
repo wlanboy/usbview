@@ -144,7 +144,8 @@ http://<ip-des-rechners>:8080
 ```
 usbview/
 ├── main.py          # FastAPI-App und HTTP-Routen
-├── capture.py       # V4L2-Parsing, FrameBroadcaster, Stream-Generator
+├── v4l2.py          # V4L2-Geräte-/Format-Parsing
+├── stream.py        # FrameBroadcaster, Stream-Generator
 ├── static/
 │   ├── index.html   # Oberfläche
 │   ├── style.css    # Styling
