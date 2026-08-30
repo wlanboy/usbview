@@ -15,6 +15,14 @@ const statusRes  = document.getElementById("status-res");
 streamImg.onload  = () => { viewer.classList.remove("loading"); };
 streamImg.onerror = () => { viewer.classList.add("loading"); dot.classList.remove("live"); };
 
+function addOption(select, value, label, isSelected) {
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = label;
+  if (isSelected) opt.selected = true;
+  select.appendChild(opt);
+}
+
 let _statusTimer = null;
 
 function startStatusPolling() {
@@ -37,11 +45,7 @@ async function loadFormats() {
 
   resSelect.innerHTML = "";
   formats.forEach((f, i) => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = `${f.width}×${f.height}`;
-    if (f.width === 1280 && f.height === 720) opt.selected = true;
-    resSelect.appendChild(opt);
+    addOption(resSelect, i, `${f.width}×${f.height}`, f.width === 1280 && f.height === 720);
   });
 
   populateFps();
@@ -52,11 +56,7 @@ function populateFps() {
   if (!fmt) return;
   fpsSelect.innerHTML = "";
   fmt.fps.forEach(fps => {
-    const opt = document.createElement("option");
-    opt.value = fps;
-    opt.textContent = fps + " fps";
-    if (fps === 30) opt.selected = true;
-    fpsSelect.appendChild(opt);
+    addOption(fpsSelect, fps, fps + " fps", fps === 30);
   });
 }
 
@@ -107,11 +107,7 @@ async function init() {
   } catch (_) { return; }
 
   devices.forEach((d, i) => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = `${d.path}  –  ${d.name}`;
-    if (d.path === "/dev/video0") opt.selected = true;
-    devSelect.appendChild(opt);
+    addOption(devSelect, i, `${d.path}  –  ${d.name}`, d.path === "/dev/video0");
   });
 
   await loadFormats();
