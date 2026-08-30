@@ -2,6 +2,7 @@ import re
 import subprocess
 import threading
 import time
+from typing import NamedTuple
 import cv2
 import numpy as np
 
@@ -9,6 +10,13 @@ DEFAULT_DEVICE = "/dev/video0"
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
 DEFAULT_FPS = 30
+
+
+class CaptureSettings(NamedTuple):
+    device: str
+    width: int
+    height: int
+    fps: int
 
 
 def list_video_devices() -> list[dict]:
@@ -81,12 +89,12 @@ def _device_index(device: str) -> int:
     return int(m.group()) if m else 0
 
 
-def _open_capture(device: str, width: int, height: int, fps: int) -> cv2.VideoCapture:
-    cap = cv2.VideoCapture(_device_index(device), cv2.CAP_V4L2)
+def _open_capture(settings: CaptureSettings) -> cv2.VideoCapture:
+    cap = cv2.VideoCapture(_device_index(settings.device), cv2.CAP_V4L2)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    cap.set(cv2.CAP_PROP_FPS, fps)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.height)
+    cap.set(cv2.CAP_PROP_FPS, settings.fps)
     return cap
 
 
@@ -100,10 +108,9 @@ class FrameBroadcaster:
         self._has_signal: bool = False
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
-        self._settings: tuple[str, int, int, int] | None = None
+        self._settings: CaptureSettings | None = None
 
-    def configure(self, device: str, width: int, height: int, fps: int) -> None:
-        settings = (device, width, height, fps)
+    def configure(self, settings: CaptureSettings) -> None:
         with self._config_lock:
             if settings == self._settings and self._thread and self._thread.is_alive():
                 return
@@ -117,16 +124,14 @@ class FrameBroadcaster:
                 self._has_signal = False
             self._thread = threading.Thread(
                 target=self._loop,
-                args=(device, width, height, fps, self._stop),
+                args=(settings, self._stop),
                 daemon=True,
             )
             self._thread.start()
 
-    def _loop(
-        self, device: str, width: int, height: int, fps: int, stop: threading.Event
-    ) -> None:
+    def _loop(self, settings: CaptureSettings, stop: threading.Event) -> None:
         while not stop.is_set():
-            cap = _open_capture(device, width, height, fps)
+            cap = _open_capture(settings)
             try:
                 while not stop.is_set():
                     ok, frame = cap.read()
@@ -154,23 +159,21 @@ class FrameBroadcaster:
 broadcaster = FrameBroadcaster()
 
 
-def mjpeg_frames(device: str, width: int, height: int, fps: int):
-    broadcaster.configure(device, width, height, fps)
-    no_signal = _make_no_signal_frame(width, height)
+def _multipart_chunk(frame: bytes) -> bytes:
+    return b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+
+
+def mjpeg_frames(settings: CaptureSettings):
+    broadcaster.configure(settings)
+    no_signal = _make_no_signal_frame(settings.width, settings.height)
     last: bytes | None = None
     while True:
         frame = broadcaster.latest()
         if frame is None:
             time.sleep(0.2)
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + no_signal + b"\r\n"
-            )
+            yield _multipart_chunk(no_signal)
         elif frame is not last:
             last = frame
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-            )
+            yield _multipart_chunk(frame)
         else:
             time.sleep(0.005)

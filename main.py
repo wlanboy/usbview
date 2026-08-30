@@ -8,6 +8,7 @@ from capture import (
     DEFAULT_WIDTH,
     DEFAULT_HEIGHT,
     DEFAULT_FPS,
+    CaptureSettings,
     list_video_devices,
     parse_v4l2_formats,
     mjpeg_frames,
@@ -45,8 +46,9 @@ async def stream(
     height: int = DEFAULT_HEIGHT,
     fps: int = DEFAULT_FPS,
 ):
+    settings = CaptureSettings(device, width, height, fps)
     return StreamingResponse(
-        mjpeg_frames(device, width, height, fps),
+        mjpeg_frames(settings),
         media_type="multipart/x-mixed-replace; boundary=frame",
     )
 
