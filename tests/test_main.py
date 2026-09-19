@@ -64,7 +64,9 @@ def test_formats_default_device_query_resolves_to_default_device():
     # FastAPI resolves that sentinel to a plain string at request time, but
     # calling the function directly (as these unit tests do) skips that
     # resolution, so assert on the underlying Query object's default instead.
-    (device_param,) = main.formats.__defaults__
+    defaults = main.formats.__defaults__
+    assert defaults is not None
+    (device_param,) = defaults
     assert device_param.default == main.DEFAULT_DEVICE
 
 
