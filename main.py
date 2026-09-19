@@ -11,7 +11,14 @@ from stream import (
     broadcaster,
     mjpeg_frames,
 )
-from v4l2 import DEFAULT_DEVICE, list_video_devices, parse_v4l2_formats
+from v4l2 import (
+    DEFAULT_DEVICE,
+    is_screen_device,
+    list_screen_devices,
+    list_video_devices,
+    parse_v4l2_formats,
+    screen_formats,
+)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -24,11 +31,13 @@ async def index():
 
 @app.get("/devices")
 async def devices():
-    return list_video_devices()
+    return list_video_devices() + list_screen_devices()
 
 
 @app.get("/formats")
 async def formats(device: str = Query(default=DEFAULT_DEVICE)):
+    if is_screen_device(device):
+        return screen_formats(device)
     return parse_v4l2_formats(device)
 
 
