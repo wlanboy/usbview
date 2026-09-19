@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 
@@ -6,6 +7,7 @@ import mss.exception
 
 DEFAULT_DEVICE = "/dev/video0"
 SCREEN_DEVICE_PREFIX = "screen:"
+WAYLAND_DEVICE = "wayland:screen"
 
 
 def list_video_devices() -> list[dict]:
@@ -54,6 +56,31 @@ def screen_formats(device: str) -> list[dict]:
             return [{"width": monitor["width"], "height": monitor["height"], "fps": [5, 10, 15, 30]}]
     except (ValueError, mss.exception.ScreenShotError):
         return []
+
+
+def is_wayland_session() -> bool:
+    return bool(os.environ.get("WAYLAND_DISPLAY"))
+
+
+def list_wayland_devices() -> list[dict]:
+    if not is_wayland_session():
+        return []
+    return [{"path": WAYLAND_DEVICE, "name": "Bildschirm (Wayland – Freigabe-Dialog beim Start)"}]
+
+
+def is_wayland_device(device: str) -> bool:
+    return device == WAYLAND_DEVICE
+
+
+def wayland_formats(_device: str) -> list[dict]:
+    # The real size is only known once the user picks a monitor in the
+    # portal's share dialog; offer common presets, the capture pipeline
+    # scales its output to whichever one is selected.
+    return [
+        {"width": 1920, "height": 1080, "fps": [5, 10, 15, 30]},
+        {"width": 1280, "height": 720, "fps": [5, 10, 15, 30]},
+        {"width": 3840, "height": 2160, "fps": [5, 10, 15, 30]},
+    ]
 
 
 def parse_v4l2_formats(device: str) -> list[dict]:

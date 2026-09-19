@@ -14,10 +14,13 @@ from stream import (
 from v4l2 import (
     DEFAULT_DEVICE,
     is_screen_device,
+    is_wayland_device,
     list_screen_devices,
     list_video_devices,
+    list_wayland_devices,
     parse_v4l2_formats,
     screen_formats,
+    wayland_formats,
 )
 
 app = FastAPI()
@@ -31,11 +34,13 @@ async def index():
 
 @app.get("/devices")
 async def devices():
-    return list_video_devices() + list_screen_devices()
+    return list_video_devices() + list_screen_devices() + list_wayland_devices()
 
 
 @app.get("/formats")
 async def formats(device: str = Query(default=DEFAULT_DEVICE)):
+    if is_wayland_device(device):
+        return wayland_formats(device)
     if is_screen_device(device):
         return screen_formats(device)
     return parse_v4l2_formats(device)

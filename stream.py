@@ -1,6 +1,9 @@
 import re
+import shutil
+import subprocess
 import threading
 import time
+from pathlib import Path
 from typing import NamedTuple
 
 import cv2
@@ -8,7 +11,10 @@ import mss
 import mss.exception
 import numpy as np
 
-from v4l2 import is_screen_device
+from v4l2 import is_screen_device, is_wayland_device
+
+_HELPER_SCRIPT = Path(__file__).resolve().parent / "wayland_capture_helper.py"
+_SYSTEM_PYTHON_CANDIDATES = ("/usr/bin/python3", "python3")
 
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
@@ -70,7 +76,64 @@ class _ScreenCapture:
         self._sct.close()
 
 
-def _open_capture(settings: CaptureSettings) -> cv2.VideoCapture | _ScreenCapture:
+def _find_system_python() -> str | None:
+    """The uv venv has no PyGObject/GStreamer bindings; the Wayland portal
+    capture needs the OS python3 that ships those (see wayland_capture_helper.py)."""
+    for candidate in _SYSTEM_PYTHON_CANDIDATES:
+        path = candidate if Path(candidate).is_absolute() else shutil.which(candidate)
+        if not path or not Path(path).exists():
+            continue
+        check = subprocess.run(
+            [path, "-c", "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst"],
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        if check.returncode == 0:
+            return path
+    return None
+
+
+class _WaylandScreenCapture:
+    """cv2.VideoCapture-like wrapper around the wayland_capture_helper.py subprocess."""
+
+    def __init__(self, width: int, height: int, fps: int) -> None:
+        python = _find_system_python()
+        if not python:
+            raise RuntimeError("no system python with PyGObject/GStreamer found for Wayland capture")
+        self._width = width
+        self._height = height
+        self._frame_size = width * height * 3
+        self._proc = subprocess.Popen(
+            [python, str(_HELPER_SCRIPT), "--width", str(width), "--height", str(height), "--fps", str(fps)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def read(self) -> tuple[bool, np.ndarray | None]:
+        assert self._proc.stdout is not None
+        chunks = []
+        remaining = self._frame_size
+        while remaining > 0:
+            chunk = self._proc.stdout.read(remaining)
+            if not chunk:
+                return False, None
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        frame = np.frombuffer(b"".join(chunks), dtype=np.uint8).reshape((self._height, self._width, 3))
+        return True, frame
+
+    def release(self) -> None:
+        self._proc.terminate()
+        try:
+            self._proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+
+
+def _open_capture(settings: CaptureSettings) -> cv2.VideoCapture | _ScreenCapture | _WaylandScreenCapture:
+    if is_wayland_device(settings.device):
+        return _WaylandScreenCapture(settings.width, settings.height, settings.fps)
     if is_screen_device(settings.device):
         return _ScreenCapture(_device_index(settings.device), settings.width, settings.height, settings.fps)
     cap = cv2.VideoCapture(_device_index(settings.device), cv2.CAP_V4L2)
@@ -116,7 +179,7 @@ class FrameBroadcaster:
         while not stop.is_set():
             try:
                 cap = _open_capture(settings)
-            except mss.exception.ScreenShotError:
+            except (mss.exception.ScreenShotError, RuntimeError, OSError):
                 with self._frame_lock:
                     self._has_signal = False
                 stop.wait(1.0)
