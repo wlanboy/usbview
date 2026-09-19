@@ -23,3 +23,7 @@ dev = [
 [tool.pyright]
 # Runs under the OS python3 (PyGObject/GStreamer), not this project's uv venv.
 exclude = ["wayland_capture_helper.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
