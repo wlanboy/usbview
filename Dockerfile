@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         v4l-utils \
         libgl1 \
         libglib2.0-0 \
+        libx11-6 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
