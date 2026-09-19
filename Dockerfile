@@ -5,6 +5,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
         libx11-6 \
+        python3-gi \
+        gir1.2-glib-2.0 \
+        gir1.2-gstreamer-1.0 \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-pipewire \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -12,7 +17,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --only-binary=:all: -r requirements.txt
 
-COPY main.py v4l2.py stream.py ./
+COPY main.py v4l2.py stream.py wayland_capture_helper.py ./
 COPY static/ static/
 
 EXPOSE 8080
