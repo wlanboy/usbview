@@ -16,6 +16,9 @@ Dropdown‑Auswahl basierend auf den Live‑Capabilities von v4l2-ctl.
 - Mehrere Capture‑Devices auswählbar  
 Praktisch für Systeme mit mehreren angeschlossenen Karten.
 
+- Bildschirm des Host-Rechners als Quelle  
+Neben `/dev/video*`-Geräten wird zusätzlich der lokale Desktop (`screen:1`, `screen:2`, …) über `mss` als auswählbares Device angeboten. Setzt X11-Zugriff (`DISPLAY`) auf dem Host voraus; ohne Display bleibt die Liste einfach leer.
+
 - Vollbild‑Modus  
 Per Button, F‑Taste oder Esc umschaltbar.
 
@@ -126,6 +129,14 @@ Bei mehreren Capture-Devices und als Daemon:
 docker run --name usbview -d --device=/dev/video0 --device=/dev/video1 -p 8080:8080 usbview
 ```
 
+Für die Bildschirmfreigabe des Docker-Hosts muss zusätzlich der X11-Socket gemountet und `DISPLAY` gesetzt werden:
+
+```bash
+docker run --name usbview -d --device=/dev/video0 \
+  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
+  -p 8080:8080 usbview
+```
+
 Der Server lauscht auf `http://0.0.0.0:8080`.  
 Im Browser öffnen: **http://localhost:8080**
 
@@ -158,7 +169,7 @@ usbview/
 | Methode | Route | Beschreibung |
 |---------|-------|--------------|
 | `GET` | `/` | HTML-Oberfläche |
-| `GET` | `/devices` | Liste aller `/dev/video*`-Devices mit Namen |
+| `GET` | `/devices` | Liste aller `/dev/video*`-Devices sowie lokaler Bildschirme (`screen:1`, …) mit Namen |
 | `GET` | `/formats?device=/dev/video0` | MJPG-Auflösungen und FPS des Devices |
 | `GET` | `/stream?device=...&width=...&height=...&fps=...` | MJPEG-Multipart-Stream |
 
