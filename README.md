@@ -17,7 +17,9 @@ Dropdown‑Auswahl basierend auf den Live‑Capabilities von v4l2-ctl.
 Praktisch für Systeme mit mehreren angeschlossenen Karten.
 
 - Bildschirm des Host-Rechners als Quelle  
-Neben `/dev/video*`-Geräten wird zusätzlich der lokale Desktop (`screen:1`, `screen:2`, …) über `mss` als auswählbares Device angeboten. Setzt X11-Zugriff (`DISPLAY`) auf dem Host voraus; ohne Display bleibt die Liste einfach leer.
+Neben `/dev/video*`-Geräten wird zusätzlich der lokale Desktop als auswählbares Device angeboten:
+  - **X11** (`screen:1`, `screen:2`, …) über `mss` — setzt X11-Zugriff (`DISPLAY`) auf dem Host voraus; ohne Display bleibt die Liste einfach leer.
+  - **Wayland** (`wayland:screen`) über `xdg-desktop-portal` (ScreenCast) + PipeWire — läuft nur, wenn `WAYLAND_DISPLAY` gesetzt ist. Beim Start des Streams erscheint einmalig der System-Freigabedialog des Compositors ("Bildschirm teilen?"), den der Nutzer am Host bestätigen muss. Läuft über einen separaten Subprozess unter dem System-`python3` (benötigt `python3-gi` + GStreamer/PipeWire, siehe Dockerfile), da die uv-verwaltete venv keine PyGObject-Bindings hat.
 
 - Vollbild‑Modus  
 Per Button, F‑Taste oder Esc umschaltbar.
@@ -137,6 +139,18 @@ docker run --name usbview -d --device=/dev/video0 \
   -p 8080:8080 usbview
 ```
 
+Für Wayland zusätzlich der D-Bus-Session-Socket, `XDG_RUNTIME_DIR` und `WAYLAND_DISPLAY` des Hosts:
+
+```bash
+docker run --name usbview -d --device=/dev/video0 \
+  -e WAYLAND_DISPLAY=$WAYLAND_DISPLAY -e XDG_RUNTIME_DIR=/tmp/xdg \
+  -e DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/xdg/bus \
+  -v "$XDG_RUNTIME_DIR":/tmp/xdg \
+  -p 8080:8080 usbview
+```
+
+> In der Praxis ist der Wayland-Pfad primär für den lokalen (Nicht-Docker-)Betrieb auf `uv run python main.py` gedacht, da er einen laufenden Desktop-Compositor mit `xdg-desktop-portal` voraussetzt — auf reinen Server-Hosts ohne grafische Sitzung bleibt `wayland:screen` in `/devices` einfach ungelistet.
+
 Der Server lauscht auf `http://0.0.0.0:8080`.  
 Im Browser öffnen: **http://localhost:8080**
 
@@ -154,9 +168,10 @@ http://<ip-des-rechners>:8080
 
 ```
 usbview/
-├── main.py          # FastAPI-App und HTTP-Routen
-├── v4l2.py          # V4L2-Geräte-/Format-Parsing
-├── stream.py        # FrameBroadcaster, Stream-Generator
+├── main.py                    # FastAPI-App und HTTP-Routen
+├── v4l2.py                    # V4L2-/Screen-Geräte-/Format-Parsing
+├── stream.py                  # FrameBroadcaster, Stream-Generator
+├── wayland_capture_helper.py  # Subprozess: xdg-desktop-portal ScreenCast + PipeWire (läuft unter System-python3)
 ├── static/
 │   ├── index.html   # Oberfläche
 │   ├── style.css    # Styling
@@ -169,7 +184,7 @@ usbview/
 | Methode | Route | Beschreibung |
 |---------|-------|--------------|
 | `GET` | `/` | HTML-Oberfläche |
-| `GET` | `/devices` | Liste aller `/dev/video*`-Devices sowie lokaler Bildschirme (`screen:1`, …) mit Namen |
+| `GET` | `/devices` | Liste aller `/dev/video*`-Devices sowie lokaler Bildschirme (`screen:1`, … für X11, `wayland:screen` für Wayland) mit Namen |
 | `GET` | `/formats?device=/dev/video0` | MJPG-Auflösungen und FPS des Devices |
 | `GET` | `/stream?device=...&width=...&height=...&fps=...` | MJPEG-Multipart-Stream |
 
