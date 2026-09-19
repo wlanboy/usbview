@@ -16,5 +16,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pyright>=1.1.409",
+    "pytest>=9.1.1",
     "ruff>=0.15.14",
 ]
+
+[tool.pyright]
+# Runs under the OS python3 (PyGObject/GStreamer), not this project's uv venv.
+exclude = ["wayland_capture_helper.py"]
