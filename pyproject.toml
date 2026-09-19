@@ -10,6 +10,7 @@ dependencies = [
     "opencv-python-headless>=4.13",
     "starlette>=1.1.0",
     "numpy>=2.4.6",
+    "mss>=9.0.2",
 ]
 
 [dependency-groups]
