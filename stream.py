@@ -4,7 +4,11 @@ import time
 from typing import NamedTuple
 
 import cv2
+import mss
+import mss.exception
 import numpy as np
+
+from v4l2 import is_screen_device
 
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
@@ -36,7 +40,39 @@ def _device_index(device: str) -> int:
     return int(m.group()) if m else 0
 
 
-def _open_capture(settings: CaptureSettings) -> cv2.VideoCapture:
+class _ScreenCapture:
+    """cv2.VideoCapture-like wrapper that grabs the local desktop via mss."""
+
+    def __init__(self, monitor_index: int, width: int, height: int, fps: int) -> None:
+        self._sct = mss.MSS()
+        monitors = self._sct.monitors
+        self._monitor = monitors[monitor_index] if 0 < monitor_index < len(monitors) else monitors[1]
+        self._width = width
+        self._height = height
+        self._interval = 1.0 / fps if fps > 0 else 0.0
+        self._next_due = 0.0
+
+    def read(self) -> tuple[bool, np.ndarray | None]:
+        wait = self._next_due - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        self._next_due = time.monotonic() + self._interval
+        try:
+            shot = self._sct.grab(self._monitor)
+        except mss.exception.ScreenShotError:
+            return False, None
+        frame = np.array(shot)[:, :, :3]  # BGRA -> BGR
+        if (frame.shape[1], frame.shape[0]) != (self._width, self._height):
+            frame = cv2.resize(frame, (self._width, self._height))
+        return True, frame
+
+    def release(self) -> None:
+        self._sct.close()
+
+
+def _open_capture(settings: CaptureSettings) -> cv2.VideoCapture | _ScreenCapture:
+    if is_screen_device(settings.device):
+        return _ScreenCapture(_device_index(settings.device), settings.width, settings.height, settings.fps)
     cap = cv2.VideoCapture(_device_index(settings.device), cv2.CAP_V4L2)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.width)
@@ -78,11 +114,17 @@ class FrameBroadcaster:
 
     def _loop(self, settings: CaptureSettings, stop: threading.Event) -> None:
         while not stop.is_set():
-            cap = _open_capture(settings)
+            try:
+                cap = _open_capture(settings)
+            except mss.exception.ScreenShotError:
+                with self._frame_lock:
+                    self._has_signal = False
+                stop.wait(1.0)
+                continue
             try:
                 while not stop.is_set():
                     ok, frame = cap.read()
-                    if not ok:
+                    if not ok or frame is None:
                         with self._frame_lock:
                             self._has_signal = False
                         break
