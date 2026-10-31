@@ -26,11 +26,11 @@ numpy==2.5.4
     #   usbview
 opencv-python-headless==5.0.0.93
     # via usbview
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via fastapi
-pydantic==2.14.1
+pydantic==2.14.2
     # via fastapi
-pydantic-core==2.50.1
+pydantic-core==2.50.2
     # via pydantic
 python-dotenv==1.2.4
     # via uvicorn
@@ -58,5 +58,5 @@ uvloop==0.23.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.3.0
     # via uvicorn
-websockets==17.3
+websockets==17.4
     # via uvicorn

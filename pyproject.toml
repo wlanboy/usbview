@@ -5,19 +5,19 @@ description = "USB HDMI Capture Card viewer"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "fastapi>=0.136",
+    "fastapi>=0.162.0",
     "uvicorn[standard]>=0.48",
-    "opencv-python-headless>=4.13",
-    "starlette>=1.1.0",
-    "numpy>=2.4.6",
-    "mss>=9.0.2",
+    "opencv-python-headless>=5.0.0.93",
+    "starlette>=1.10.0",
+    "numpy>=2.5.4",
+    "mss>=10.2.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.409",
-    "pytest>=9.1.1",
-    "ruff>=0.15.14",
+    "pyright>=1.1.414",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
 ]
 
 [tool.pyright]
